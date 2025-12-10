@@ -1,0 +1,712 @@
+---
+output: pdf_document
+fontsize: 11
+---
+
+\begin{center}
+    \vspace*{5cm}
+    \textbf{\LARGE{\fontsize{24}{28}\selectfont Predicted Body Mass of Penguins}}\\
+    \vspace{1.5cm}
+    \textbf{\fontsize{14}{18}\selectfont By}\\
+    \vspace{1.5cm}
+    {\fontsize{12}{14}\selectfont Huiting Wu}\\
+    {\fontsize{12}{14}\selectfont Claudio Hernandez Garcia}\\
+    {\fontsize{12}{14}\selectfont Michelle Joyce Pira}\\
+    {\fontsize{12}{14}\selectfont Thu Tran}\\
+    \vspace{1.5cm}
+    \textbf{\fontsize{14}{18}\selectfont Date}\\
+    \vspace{1.5cm}
+    {\fontsize{12}{14}\selectfont May $1^{st}$, 2023}
+\end{center}
+
+\newpage
+```{r results='hide', message=FALSE, echo=FALSE}
+library(palmerpenguins)
+library(tidyverse)
+library(pander)
+library(car)
+penguins1 <- na.omit(penguins)
+attach(penguins1)
+model <- lm(body_mass_g ~ species + island + bill_depth_mm 
+            + bill_length_mm + flipper_length_mm + sex + year, penguins1)
+null.model <- lm(body_mass_g ~ 1, penguins1)
+penguins2 <- penguins1[, c(-1,-2,-6,-7,-8)]
+fit <- lm(body_mass_g ~ species + bill_depth_mm + bill_length_mm + 
+            flipper_length_mm + sex, penguins1)
+fit1 <- lm(body_mass_g ~ species + bill_length_mm + flipper_length_mm + 
+             sex + year, penguins1)
+fit2 <- lm(body_mass_g ~ species + bill_length_mm + flipper_length_mm + sex, penguins1)
+n <- nrow(penguins1)
+model.bbic <- lm(body_mass_g ~ species + bill_length_mm + bill_depth_mm + flipper_length_mm 
+                 + sex, penguins1)
+model.baic <- lm(body_mass_g ~ species + bill_length_mm + bill_depth_mm + flipper_length_mm 
+                 + sex + year, penguins1)
+YT <- powerTransform(body_mass_g ~ species + bill_length_mm + flipper_length_mm + 
+                       sex + year, penguins1)
+PT <- powerTransform(cbind(bill_length_mm, flipper_length_mm) ~ 1, penguins1)
+model3 <- lm(body_mass_g ~ species + I(bill_length_mm^(-1)) + 
+               flipper_length_mm + sex + year, penguins1)
+Interaction_model <- lm(body_mass_g ~ species + bill_length_mm + 
+                          flipper_length_mm + sex + year + 
+                          species*bill_length_mm + species*flipper_length_mm +
+                          species*sex + species*year + 
+                          bill_length_mm*flipper_length_mm + bill_length_mm*sex +
+                          bill_length_mm*year + flipper_length_mm*sex+
+                          flipper_length_mm*year + sex*year , penguins1)
+Interaction_model1 <- lm(body_mass_g ~ species + bill_length_mm + 
+                          flipper_length_mm + sex + year + species*sex, penguins1)
+```
+## 1. Abstract:
+In this analysis, we use “Palmer penguins" dataset created by Dr. Kristen Gorman’s dataset who is a Marine Biology’s professor. We use different statistic method to build a multiple linear model that help us to estimate the body mass of penguins living in Antarctica by using species, island, sex, and other measurements of penguins’ bill and flipper. To predict the body mass, we can use the variables such as species, year, sex, bill length and flipper length.
+
+
+## 2. Problem and Motivation:
+
+    The body mass of a penguin is particularly important as it impacts their survival and reproductive success. Larger penguins are better able to dive deeper and catch more food, as well as survive harsh winter conditions and raise chicks. Understanding body mass is crucial for conservation efforts to ensure the long-term survival of penguin populations.
+
+    The motivation for the project was to better understand the ecology and behavior of these penguin species, as well as to monitor changes in their populations over time. Body mass is a particularly important variable, as it can affect a penguin's ability to forage, reproduce, and survive harsh environmental conditions. Penguin body mass plays a crucial role in their survival and reproduction. According to Williams and Naveen (2019), body mass affects penguin behavior, including foraging and breeding success. Larger penguins are better able to dive deeper and stay underwater for longer periods of time, allowing them to catch more food. Additionally, heavier penguins have a greater chance of surviving harsh winter conditions and are better equipped to raise chicks. For example, in a study of Adélie penguins, larger individuals were found to have higher chick survival rates (Jenouvrier et al., 2019). Therefore, understanding the importance of body mass is essential for conservation efforts to ensure the long-term survival of penguin populations.
+
+## 3. Data Description:
+
+- **Data Sources & Data Description:**
+Dr. Kristen Gorman's "palmer penguins" data set is a built-in data set in the R library. There are two data sets with this package. Penguins_raw which contains 17 variables, and a simplified version of penguins_raw, just called penguins has 8 variables. The project used the pakage of penguins. This data set contains information on three species of penguins - Adelie, Chinstrap, and Gentoo. This data was gathered from the Palmer Archipelago in Antarctica. The data set includes measurements of body mass, flipper length, bill length, and other characteristics for each penguin. The data set originally published in *Ecological Sexual Dimorphism and Environmental Variability within a Community of Antarctic Penguins* by Gorman KB, Williams TD and Fraser WR in 2014. There are 344 penguins recorded and 8 variables. There are some missing values in the data set. To remove the missing data because it didn’t give enough information to predict the body mass of the penguin. We remove 11 penguins' records.
+
+```{r message=FALSE, echo=FALSE}
+# Print the descriptions of the penguins data as a table
+Predictors <- c("Species", "Island", "Bill Length_mm", "Bill Depth", 
+                "Flipper Length", "Body Mass", "Sex", "Year")
+Description <- c("a factor denoting penguin species (Adélie, Chinstrap and Gentoo)", 
+                 "a factor denoting island in Palmer Archipelago, Antarctica 
+                 (Biscoe, Dream or Torgersen)",
+                 "a number denoting bill length (millimeters)",
+                 "a number denoting bill depth (millimeters)",
+                 "an integer denoting flipper length (millimeters)",
+                 "an integer denoting body mass (grams)",
+                 "a factor denoting penguin sex (female, male)",
+                 "an integer denoting the study year (2007, 2008, or 2009)")
+Data_Type <- c("Character", "Character", "Numerical", 
+               "Numerical", "Numerical", "Numerical", 
+               "Character", "Integers")
+table1 <- data.frame(Predictors, Data_Type, Description)
+library(pander)
+pander(table1, caption = "Description of the penguins dataset")
+```
+
+- **Visualization of the variables:** There are some variables that are characteristic and some of them are numerical. Although the variable of Year is recorded as integer, we used it as a character variable since the data only contains from 2007 to 2009. The Box-Plot is useful to compare the Body Mass and the characteristic variables *(Graph 1: Box-plots of body mass on different character predictors)*. The results from the box plots show the Gentoo species has a higher body mass than other species. Male penguins have a higher body mass than Female penguins. The penguins in Biscoe Island have higher body mass than other islands. In 2008, the penguin population has a higher body mass than in 2007 and in 2009.
+
+```{r echo = FALSE, out.width="100%", fig.dim = c(8, 3)}
+# graph 1
+par(mfrow = c(1,4), mar = c(8,4,1,0.5))
+plot(species, body_mass_g, cex.axis = 0.7, gap.axis = -1, 
+     xlab = "species", ylab = "body mass(g)")
+plot(body_mass_g ~ sex, xlab = "gender", ylab = "body mass(g)", 
+     cex.axis = 1, penguins1)
+mtext("Graph 1: Box-plots of body mass on different character predictors", 
+      side = 1, line = 6, font = 1, cex = 1)
+plot(island, body_mass_g, cex.axis = 0.7, gap.axis = -1, 
+     xlab = "island", ylab = "body mass(g)")
+fyear <- as.factor(penguins1$year)
+plot(fyear, penguins1$body_mass_g, xlab = "year", ylab = "body mass(g)")
+```
+
+Graph 3: Scatter plots of body mass on different numerical predictors show the relationships between numerical variables. Graph 3 shows that the Bill Depth has no linear relationship with Body Mass. The Bill Length and Flipper Length seem to have a positive linear relationship with Body Mass. Bill Depth neither has a linear relationship with Bill Length nor with Flipper Length. The Bill Length and Flipper Length seem to have a positive relationship with each other.
+
+```{r echo = FALSE, fig.dim = c(8, 3.5)}
+# graph 3
+par(cex.lab = 1.5, mar = c(8,4,5,5))
+pairs(~ body_mass_g + bill_depth_mm + bill_length_mm + flipper_length_mm, 
+      penguins1, cex = 0.5)
+mtext("Graph 3: Scatter plots of body mass on different numerical predictors", 
+      side = 1, line = 6, font = 1, cex = 1, padj = T)
+```
+
+## 4. Questions of Interest: 
+What factors are most strongly associated with the body mass of penguins, and how accurately can we predict their body mass using these predictors?
+
+## 5. Regression Analysis, Results, and Interpretation:
+
+- **Important Details of the Analysis & Exploratory Analysis:**
+
+    The first multiple linear regression model ***(full model)*** is Body Mass on Species, Island, Bill Length, Bill Depth, Flipper Length, Sex, and Year. The dataset contains 8 variables listed above. The full model simply contains all the variables which are Body Mass as response and the remaining 7 variables as predictors *($R^2$ = 0.8734)*. In order to have the most suitable model, the variable selection process is taken into the following analysis. 
+
+    Checking the relationship between Body Mass and all other variables with the added-variable graph *(Graph 4: Added-Variable plots mass on all predictors)*. Since The regression line is most the same as Body Mass equal 0 shown on the graph of different Islands verse Body Mass, there is no relationship between variables of Body Mass and Island. All other variables show a relationship with Body Mass in Graph 4 which supported our analysis in Graph 3.
+
+```{r echo = F, fig.dim = c(10, 5)}
+# graph 4
+par(cex.lab = 1.5, mar = c(8,4,5,5))
+avPlots(model, cex = 0.5, ylab = "Body Mass")
+mtext("Graph 4: Added-Variable plots of body mass on all predictors", 
+      side = 4, line = 4, font = 1, cex = 0.9, adj = T)
+```
+
+    To remove the Island variable with the result of the ANOVA table *(Null hypothesis: model removed the Island variable; Alternative hypothesis: the full model which contains all the variables; P-value = 0.6168 > $\alpha$ = 0.05, F-value = 0.484, fail to reject the null hypothesis, keep the reduced model)* and the results of t-test for the measurement of the predictor Island. *(Null hypothesis: the measurement of the predictor Island = 0; alternative hypothesis: measurement of the predictor Island $\neq$ 0. T-test for island of Dream: t-value = -0.363, p-value = 0.71704 > $\alpha$ = 0.05 , and t-test for island of Torgersen: t-value = -0.966, p-value = 0.33482 > $\alpha$ = 0.05. Both fail to reject the null hypothesis)* All levels of Island are not significant. Remove the variable of Island.
+
+    To remove the Bill Depth variable with the result of comparing the adjusted $R^2$ of the model remove Island only *($R^2$ = 0.8738)* and the model remove Island and Bill Depth together *($R^2$ = 0.8706)* which doesn’t change a lot. It indicates that the both model has a similar variability of Body Mass can explained by all the predictors collectively. We want a model with fewer predictors therefore we choose to remove both Island and Bill Depth.
+
+    Since the t-test of the measurement of Year is slightly important *(null hypothesis: measurement of Year = 0;  alternative hypothesis: measurement of Year $\neq$ 0; t-value = -2.042, P-value = 0.04194 < $\alpha$ = 0.05, reject the null hypothesis)* which indicates it should be included in the model. We double check it with comparing the adjusted $R^2$ of the model remove Island, Bill Depth, and Year *($R^2$ = 0.8685)* and the model remove Island and Bill Depth *($R^2$ = 0.8706)*. It is decreasing if we remove Year which indicated the less variability of Body Mass can be explained by all the predictors collectively. Therefore, we keep the variable of Year. 
+
+    Considering adding an interaction term into the model since the measurement of the interaction of Chinstrap species with the Male variable is important*(Null hypothesis: measurement of the interaction of Chinstrap species with Male = 0; Alternative hypothesis: measurement of the interaction of Chinstrap species with Male $\neq$ 0.; t-value = -2.524, P-value = 0.0121 < $\alpha$ = 0.05, reject the null hypothesis)* which suggest to keep the interaction variable of Specie and Sex. Also, the adjust $R^2$ of the model with the interaction variable is higher than the full model.
+
+    The ***final model*** with response as Body Mass and the predictors are Species, Bill Length, Flipper Length, Sex, Year, and the interaction of Species and Sex.
+    
+- **Diagnostic Checks:** During the process of choosing predicted variables, we made a diagnostic check before making the transformation *(Graph 6 and 7 in Appendix 2)* and before the conclusion for the final model. We check 4 assumptions before giving final conclusion:
+
+- Linearity: By observing the Added-Variable Plots *(Graph 8: Comparing the linearity of the full model and the final model)* of the final model, most of the predicted variables show a correlation with the Body mass response.
+
+```{r echo = F, message=FALSE, warning=FALSE, results='hide', fig.dim = c(10, 5)}
+# Linearity
+avPlots(Interaction_model1)
+mtext("Graph 8: Comparing the linearity of the full model & the final model", 
+      side = 4, line = 1, font = 1, cex = 0.8, adj = T)
+```
+
+- Independent: The sample of penguins is randomly selected.
+
+- Normality: As comparing the full model and the final model, we can obviously see more points falling along the quantile-quantile line*(Graph 9: Comparing the the Equal Variance and Normality of the full model and the final model)*.
+
+- Equal variance: The variance of the residuals is roughly constant across all values of the fitted values. The assumption of equal variance is met based on the residual plot showing that most of the points evenly distributed around the line of residual equals 0. There is a pattern in the residual plot because the model contains some characteristic variables.
+
+```{r echo = F, message=FALSE, warning=FALSE, results='hide', fig.dim = c(8, 2.5)}
+# Normal QQplot
+par(mfrow=c(1,4))
+qqnorm(resid(model))
+qqline(resid(model),col = "red", cex=0.5)
+qqnorm(resid(Interaction_model1))
+qqline(resid(Interaction_model1),col = "red", cex=0.5)
+# Residual Plot
+residualPlot(model, cex = 0.5, main = "Full model")
+residualPlot(Interaction_model1, cex = 0.5, main = "Final model")
+mtext("Graph 9: Comparing the Equal Variance and Normality of the full model and the final model", 
+      side = 1, line = 4, font = 1, cex = 0.8, adj = T)
+```
+
+- **Interpretation:**
+The equation to predict body mass: $\hat{E(Body Mass)}$ = 106016 - 159.4 SpeciesChinstrap + 588.5 SpeciesGentoo + 24.85 Bill Length + 20.74 Flipper Length + 501 SexMale - 53.52 Year - 371.2 SpeciesChinstra * SexMale + 23.46 SpeciesGentoo * SexMale. 
+
+    Table 20 *(Table 20: the measurements of all the predictors of the final model in Appendix 2)* shows that most of the measures of the predictions are important, but the interaction between Gentoo species and male penguins is not important. However, the interaction between Chinstrap species and male penguins is important, so we decided to keep the interaction between Species and Sex of penguins in their analysis.
+
+    This decision is supported by the box-plot of species v.s. body mass, which shows that Gentoo penguins have a higher mean weight than other species. Additionally, the numeric variables such as Bill Length and Flipper Length have a positive linear correlation with body mass, meaning that as these measurements increase, so does body mass.
+
+    We also observed a negative relationship between study year and body mass. This indicates that the weight of penguins has decreased over time, which is concerning and suggests that penguin populations may be at risk.
+
+## 6. Conclusions: 
+
+    This project used the "palmer penguins" data set of Dr. Kristen Gorman to predict the body mass of penguins by utilizing multiple linear regression with Species, Bill Length, Flipper Length, Sex, Year, and the interaction of Species and Sex as predictors. The final multiple linear models states that there is 87.91% variability in body mass can be explained by Species, Bill Length, Flipper Length, Sex, Year, and the interaction of Species and Sex collectively.
+
+    The final model can be used to predict the body mass of penguins based on the values of the predictors. Such predictions can be helpful in various fields, such as conservation biology, where understanding the body mass of penguins can assist scientists in making informed decisions about their management and conservation. During the analysis, a decline in the body mass of penguins was observed over the study years. This decline can be an indicator of potential threats to the penguin population, such as changes in food availability, climate change, or pollution. By utilizing this information, scientists can identify such threats and develop strategies to mitigate them and protect the penguin population.
+
+    In conclusion, this project demonstrates the potential of multiple linear regression to predict body mass and its significance in informing conservation efforts. The findings can serve as a starting point for further research and as a tool for decision-makers in the field of conservation biology.
+
+## 7. Appendices:
+
+## Appendix 1 : R Code
+
+```{r results='hide', message=FALSE}
+#DataSet input
+library(palmerpenguins)
+```
+
+```{r results='hide', message=FALSE}
+library(tidyverse)
+```
+
+```{r message=FALSE, results='hide'}
+# Print the descriptions of the penguins data as a table
+Predictors <- c("Species", "Island", "Bill Length_mm", "Bill Depth", 
+                "Flipper Length", "Body Mass", "Sex", "Year")
+Description <- c("a factor denoting penguin species (Adélie, Chinstrap and Gentoo)", 
+                 "a factor denoting island in Palmer Archipelago, Antarctica 
+                 (Biscoe, Dream or Torgersen)",
+                 "a number denoting bill length (millimeters)",
+                 "a number denoting bill depth (millimeters)",
+                 "an integer denoting flipper length (millimeters)",
+                 "an integer denoting body mass (grams)",
+                 "a factor denoting penguin sex (female, male)",
+                 "an integer denoting the study year (2007, 2008, or 2009)")
+Data_Type <- c("Character", "Character", "Numerical", 
+               "Numerical", "Numerical", "Numerical", 
+               "Character", "Integers")
+table1 <- data.frame(Predictors, Data_Type, Description)
+library(pander)
+pander(table1, caption = "Description of the penguins dataset")
+```
+
+```{r message=FALSE, results='hide'}
+# remove the null value of the dataset
+penguins1 <- na.omit(penguins)
+# attache the dataset after removing the null value
+attach(penguins1)
+# full model
+model <- lm(body_mass_g ~ species + island + bill_depth_mm 
+            + bill_length_mm + flipper_length_mm + sex + year, penguins1)
+# null model
+null.model <- lm(body_mass_g ~ 1, penguins1)
+# summary of the full model
+summary(model)
+```
+
+```{r, results='hide', fig.show='hide'}
+## Visulization of the Dataset
+### Character Predictors with Response
+par(mfrow = c(1,4), mar = c(8,4,4,1))
+plot(species, body_mass_g, cex.axis = 0.6, gap.axis = -1, 
+     xlab = "species", ylab = "body mass(g)")
+plot(body_mass_g ~ sex, xlab = "gender", ylab = "body mass(g)", 
+     cex.axis = 1, penguins1)
+# Box-plot of Character Predictors versus Response
+mtext("Graph 1: Box-plots of body mass on different character predictors", 
+      side = 1, line = 6, font = 1, cex = 1)
+plot(island, body_mass_g, cex.axis = 0.6, gap.axis = -1, 
+     xlab = "island", ylab = "body mass(g)")
+fyear <- as.factor(penguins1$year)
+plot(fyear, penguins1$body_mass_g, xlab = "year", ylab = "body mass(g)")
+```
+
+
+```{r, results='hide'}
+# Sample size of different levels of the character predictors
+Species <- penguins %>% 
+  count(species)
+Island <- penguins %>% 
+  count(island)
+Sex <- penguins %>% 
+  count(sex)
+Table2 <- data.frame(Species, Island, Sex)
+pander(Table2, 
+       caption = "Sample size of different levels of character predictors")
+```
+
+```{r message=FALSE, results='hide', warning=FALSE}
+# Means of numerical predictors of different levels of character predictors
+library(dplyr)
+p <- penguins %>% 
+group_by(species) %>% 
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+i <- penguins %>% 
+group_by(island) %>% 
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+s <- penguins %>% 
+group_by(sex) %>% 
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+pander(p, caption = "Mean of Numerical predictors of different Specifics", 
+       split.table = Inf)
+pander(i, caption = "Mean of Numerical predictors of different Islands", 
+       split.table = Inf)
+pander(s, caption = "Mean of Numerical predictors of different Sex")
+```
+
+```{r results='hide', message=FALSE}
+library(car)
+```
+
+```{r results='hide'}
+# Multi-collinearity of numerical predictors 
+## By correlation matrix
+### delete delete the character predictors columns from the data
+penguins2 <- penguins1[, c(-1,-2,-6,-7,-8)]
+### correlation between predictors
+correlation <- round(cor(penguins2), 2)
+pander(correlation, caption = "Correlation Matrix of Predictors")
+```
+
+```{r results='hide', fig.show='hide'}
+## By scatter plot matrix
+scatterplotMatrix(penguins2)
+mtext("Graph 2: Scatter plots of different numerical predictors", 
+      side = 1, line = 4, font = 1, cex = 1)
+```
+
+```{r results='hide', fig.show='hide'}
+### Relationships between all predictors and between numerical response and predictors
+pairs(~ body_mass_g + bill_depth_mm + bill_length_mm + flipper_length_mm, 
+      penguins1, cex = 0.5)
+mtext("Graph 3: Scatter plots of body mass on different numerical predictors", 
+      side = 1, line = 4, font = 1, cex = 1)
+
+par(cex.lab = 0.8)
+avPlots(model, cex = 0.5)
+mtext("Graph 4: Added-Variable plots of body mass on all predictors", 
+      side = 1, line = 4, font = 1, cex = 0.8)
+
+plot(body_mass_g~bill_depth_mm,penguins1, mar = c(2,2,2,2))
+mtext("Graph 5: Scatter plots of body mass on predictor Bill Depth", 
+      side = 1, line = 4, font = 1, cex = 1)
+```
+
+```{r results='hide'}
+### Variable Selection by manually
+fit <- lm(body_mass_g ~ species + bill_depth_mm + bill_length_mm + 
+            flipper_length_mm + sex + year, penguins1)
+anova(fit, model)
+```
+
+```{r results='hide'}
+fit1 <- lm(body_mass_g ~ species + bill_length_mm + flipper_length_mm + 
+             sex + year, penguins1)
+Anova_Table <- anova(fit1, fit)
+pander(Anova_Table, caption = "ANOVA Test on Model **with Bill Dength** and **without Bill Dength**")
+```
+
+```{r results='hide'}
+fit2 <- lm(body_mass_g ~ species + bill_length_mm + flipper_length_mm + sex, penguins1)
+anova(fit2, model)
+```
+
+```{r results='hide'}
+### Compare the 3 models's $R^2$ 
+Name <- c("Model remove Island", "Model remove Island and Bill Depth", 
+          "Model remove Island, Bill Depth, and Year", "Full model")
+Radj_squared <- c(summary(fit)$adj.r.squared, summary(fit1)$adj.r.squared, 
+  summary(fit2)$adj.r.squared, summary(model)$adj.r.squared )
+Rtable <- data.frame(Name, Radj_squared)
+pander(Rtable, caption = "Goodness of Fit of different models")
+```
+
+```{r results='hide'}
+## Variable selection by automatically: 
+n <- nrow(penguins1)
+back.bic <- step(model, direction = "backward", trace = 0, k = log(n))
+back.bic
+```
+
+```{r results='hide'}
+back.aic <- step(model, direction = "backward", trace = 0)
+back.aic
+```
+
+```{r results='hide'}
+forward.aic <- step(model, direction = "forward", trace = 0, 
+                    scop = list(lower=null.model, upper = model))
+forward.aic
+```
+
+```{r results='hide'}
+forward.bic <- step(model, direction = "forward", trace = 0, 
+                    k = log(n), scop = list(lower=null.model, upper = model))
+forward.bic
+```
+
+```{r results='hide'}
+### Compare the two models
+# fit 2 models
+model.bbic <- lm(body_mass_g ~ species + bill_length_mm + bill_depth_mm + flipper_length_mm 
+                 + sex, penguins1)
+model.baic <- lm(body_mass_g ~ species + bill_length_mm + bill_depth_mm + flipper_length_mm 
+                 + sex + year, penguins1)
+# compare two models
+anova(model.bbic, model.baic)
+# compare with island(full model) and without island(reduced model)
+anova(model.baic, model)
+# compare the $R^2$ of full model, model without island
+c(summary(model)$adj.r.squared, summary(model.baic)$adj.r.squared)
+```
+
+```{r results='hide', fig.show='hide'}
+## Assumptions Checking
+# linearity
+pairs(body_mass_g ~ bill_length_mm + flipper_length_mm, penguins1)
+mtext("Graph 6: Linearity assumptions checking by Scatter plots 
+      between Body Mass, Bill Length, and Flipper Length", 
+      side = 1, line = 4, font = 1, cex = 0.8)
+# constant variance and normality
+par(mfrow = c(1,2), cex.lab = 0.8, cex.main = 1)
+plot(model, 1:2)
+mtext("Graph 7: Normality and Constant Variance assumptions checking by 
+      Residual Plot and Normal QQ Plot",
+      side = 4, line = 1, font = 1, cex = 0.8)
+```
+
+```{r results='hide'}
+summary(fit1)
+```
+
+```{r results='hide'}
+## Add interaction terms into the final model
+Interaction_model <- lm(body_mass_g ~ species + bill_length_mm + 
+                          flipper_length_mm + sex + year + 
+                          species*bill_length_mm + species*flipper_length_mm +
+                          species*sex + species*year + 
+                          bill_length_mm*flipper_length_mm + bill_length_mm*sex +
+                          bill_length_mm*year + flipper_length_mm*sex+
+                          flipper_length_mm*year + sex*year , penguins1)
+summary(Interaction_model)
+```
+
+```{r results='hide'}
+Interaction_model1 <- lm(body_mass_g ~ species + bill_length_mm + 
+                          flipper_length_mm + sex + year + species*sex, penguins1)
+summary(Interaction_model1)
+```
+
+```{r results='hide'}
+## Compare Final Model without 
+## interaction term v.s. the final model with interaction of Species and Sex
+Anova_Table1 <- anova(fit1, Interaction_model1)
+pander(Anova_Table1, caption = "Final Model without interaction term v.s. 
+       the final model with interaction of Species and Sex")
+```
+
+```{r results='hide'}
+s <- summary(Interaction_model1)
+pander(s, caption = "The measurements of all the predictors of the final model")
+```
+
+```{r results='hide'}
+name = "Final Model with Interaction"
+Radj_Squared = summary(Interaction_model1)$adj.r.squared
+Rtable <- data.frame(name, Radj_Squared)
+pander(Rtable, caption = "The Goodness Of Fit")
+```
+```{r message=FALSE, warning=FALSE, results='hide', fig.show='hide'}
+## assumption check for final model
+# Linearity
+avPlots(Interaction_model1)
+# Residual Plot
+par(mfrow=c(2,2))
+residualPlot(model, cex = 0.5, main = "Full model")
+residualPlot(Interaction_model1, cex = 0.5, main = "Final model")
+# Normal QQplot
+qqnorm(resid(model))
+qqline(resid(model),col = "red", cex=0.5)
+qqnorm(resid(Interaction_model1))
+qqline(resid(Interaction_model1),col = "red", cex=0.5)
+```
+
+```{r warning=FALSE, results='hide', fig.show='hide'}
+## ScatterPlotMatrix of the Final Model with interaction term
+scatterplotMatrix(~ body_mass_g + species + 
+                           species*sex + bill_length_mm + 
+                           flipper_length_mm + sex + year, penguins1, cex = 0.3)
+mtext("Graph 10: Scatter Plots of the Final Model",
+      side = 4, line = 1, font = 1, cex = 0.8)
+```
+
+```{r results='hide'}
+## Prediction
+# Test for the random penguins:
+set.seed(888)
+random<-sample(1:nrow(penguins1),3)
+x1<-data.frame(species= penguins1$species[random[1]],
+
+bill_length_mm=penguins1$bill_length_mm[random[1]],
+flipper_length_mm=penguins1$flipper_length_mm[random[1]],
+sex=penguins1$sex[random[1]] ,
+year=penguins1$year[random[1]])
+x2<-data.frame(species= penguins1$species[random[2]],
+
+bill_length_mm=penguins1$bill_length_mm[random[2]],
+flipper_length_mm=penguins1$flipper_length_mm[random[2]],
+sex=penguins1$sex[random[2]] ,
+year=penguins1$year[random[2]])
+x3<-data.frame(species= penguins1$species[random[3]],
+
+bill_length_mm=penguins1$bill_length_mm[random[3]],
+flipper_length_mm=penguins1$flipper_length_mm[random[3]],
+sex=penguins1$sex[random[3]] ,
+year=penguins1$year[random[3]])
+
+pred1<-predict(Interaction_model1,newdata=x1,interval="prediction")
+pred2<-predict(Interaction_model1,newdata=x2,interval="prediction")
+pred3<-predict(Interaction_model1,newdata=x3,interval="prediction")
+
+# table
+Random_table<-data.frame(
+Penguin_number=random,
+Species = c(species[random[1]],species[random[2]],species[random[3]]),
+Bill_length= c(bill_length_mm[random[1]],bill_length_mm[random[2]],bill_length_mm[random[3]]),
+Flipper_length=c(flipper_length_mm[random[1]],flipper_length_mm[random[2]],flipper_length_mm[random[3]]),
+Sex =c(sex[random[1]],sex[random[2]],sex[random[3]]),
+Year =c(year[random[1]],year[random[2]],year[random[3]])
+)
+pander(Random_table, caption = "Random selected variables")
+
+# table
+Predict_table<-data.frame(Penguin_number=random,
+Actual =c(penguins1$body_mass_g[random[1]],
+penguins1$body_mass_g[random[2]],
+penguins1$body_mass_g[random[3]]),
+Fit= c(pred1[,"fit"],pred2[,"fit"],pred3[,"fit"]),
+Lower=c(pred1[,"lwr"],pred2[,"lwr"],pred3[,"lwr"]),
+Upper=c(pred1[,"upr"],pred2[,"upr"],pred3[,"upr"])
+)
+pander(Predict_table, caption = "The Predict table")
+```
+
+```{r}
+detach(penguins1)
+```
+
+## Appendix 2: Figures & Tables & Test Results
+
+### Tables
+```{r, echo = F}
+Species <- penguins %>% 
+  count(species)
+Island <- penguins %>% 
+  count(island)
+Sex <- penguins %>% 
+  count(sex)
+Table2 <- data.frame(Species, Island, Sex)
+pander(Table2, 
+       caption = "Sample size of different levels of character predictors")
+```
+
+```{r message=FALSE, echo=FALSE, warning=FALSE}
+library(dplyr)
+p <- penguins %>% 
+group_by(species) %>% 
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+i <- penguins %>% 
+group_by(island) %>% 
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+s <- penguins %>% 
+group_by(sex) %>% 
+  summarize(across(where(is.numeric), mean, na.rm = TRUE))
+pander(p, caption = "Mean of Numerical predictors of different Specifics", 
+       split.table = Inf)
+pander(i, caption = "Mean of Numerical predictors of different Islands", 
+       split.table = Inf)
+pander(s, caption = "Mean of Numerical predictors of different Sex")
+```
+
+```{r echo=FALSE}
+### delete delete the character predictors columns from the data
+penguins2 <- penguins1[, c(-1,-2,-6,-7,-8)]
+### correlation between predictors
+correlation <- round(cor(penguins2), 2)
+pander(correlation, caption = "Correlation Matrix of Predictors")
+```
+
+```{r echo=FALSE}
+# table
+Random_table<-data.frame(
+Penguin_number=random,
+Species = c(species[random[1]],species[random[2]],species[random[3]]),
+Bill_length= c(bill_length_mm[random[1]],bill_length_mm[random[2]],bill_length_mm[random[3]]),
+Flipper_length=c(flipper_length_mm[random[1]],flipper_length_mm[random[2]],flipper_length_mm[random[3]]),
+Sex =c(sex[random[1]],sex[random[2]],sex[random[3]]),
+Year =c(year[random[1]],year[random[2]],year[random[3]])
+)
+pander(Random_table, caption = "Random selected variables")
+```
+
+```{r echo=FALSE}
+Name <- c("Model remove Island", "Model remove Island and Bill Depth", 
+          "Model remove Island, Bill Depth, and Year", "Full model")
+Radj_squared <- c(summary(fit)$adj.r.squared, summary(fit1)$adj.r.squared, 
+  summary(fit2)$adj.r.squared, summary(model)$adj.r.squared )
+Rtable <- data.frame(Name, Radj_squared)
+pander(Rtable, caption = "Goodness of Fit of different models")
+```
+
+```{r echo=FALSE}
+name = "Final Model with Interaction"
+Radj_Squared = summary(Interaction_model1)$adj.r.squared
+Rtable <- data.frame(name, Radj_Squared)
+pander(Rtable, caption = "The Goodness Of Fit")
+```
+
+### Figures
+```{r echo=FALSE ,out.width="50%", out.height="50%", message=FALSE, results='hide'}
+scatterplotMatrix(penguins2)
+mtext("Graph 2: Scatter plots of different numerical predictors", 
+      side = 1, line = 4, font = 1, cex = 1)
+plot(body_mass_g~bill_depth_mm,penguins1, mar = c(2,2,2,2))
+mtext("Graph 5: Scatter plots of body mass on predictor Bill Depth", 
+      side = 1, line = 4, font = 1, cex = 1)
+## Assumptions Checking
+# linearity
+pairs(body_mass_g ~ bill_length_mm + flipper_length_mm, penguins1)
+mtext("Graph 6: Linearity assumptions checking by Scatter plots 
+      between Body Mass, Bill Length, and Flipper Length", 
+      side = 1, line = 4, font = 1, cex = 0.8)
+# constant variance and normality
+par(mfrow = c(1,2), cex.lab = 0.8, cex.main = 1)
+plot(model, 1:2)
+mtext("Graph 7: Normality and Constant Variance assumptions checking by 
+      Residual Plot and Normal QQ Plot",
+      side = 4, line = 1, font = 1, cex = 0.8)
+```
+
+
+### Test Results
+```{r echo=F}
+# summary of the full model
+b <- summary(model)
+pander(b, caption = "Summary Analaysis of important of all the predictors")
+```
+
+```{r echo=FALSE}
+fit1 <- lm(body_mass_g ~ species + bill_length_mm + flipper_length_mm + 
+             sex + year, penguins1)
+Anova_Table <- anova(fit1, fit)
+pander(Anova_Table, caption = "ANOVA Test on Model **with Bill Depth** and **without Bill Depth**")
+```
+
+```{r echo=F}
+# compare with island(full model) and without island(reduced model)
+t <- anova(model.baic, model)
+pander(t, caption = "ANOVA Test on Model **with Island** and **without Island**")
+```
+
+```{r echo =FALSE}
+### Compare the 3 models's $R^2$ 
+Name <- c("Model remove Island", "Model remove Island and Bill Depth", 
+          "Model remove Island, Bill Depth, and Year", "Full model")
+Radj_squared <- c(summary(fit)$adj.r.squared, summary(fit1)$adj.r.squared, 
+  summary(fit2)$adj.r.squared, summary(model)$adj.r.squared )
+Rtable <- data.frame(Name, Radj_squared)
+pander(Rtable, caption = "Goodness of Fit of different models")
+```
+
+```{r echo=FALSE}
+## Add interaction terms into the final model
+Interaction_model <- lm(body_mass_g ~ species + bill_length_mm + 
+                          flipper_length_mm + sex + year + 
+                          species*bill_length_mm + species*flipper_length_mm +
+                          species*sex + species*year + 
+                          bill_length_mm*flipper_length_mm + bill_length_mm*sex +
+                          bill_length_mm*year + flipper_length_mm*sex+
+                          flipper_length_mm*year + sex*year , penguins1)
+a <- summary(Interaction_model)
+pander(a, caption = "Summary Analysis of the important of Interaction Terms")
+```
+
+```{r echo=FALSE}
+Anova_Table1 <- anova(fit1, Interaction_model1)
+pander(Anova_Table1, caption = "Final Model without interaction term v.s. 
+       the final model with interaction of Species and Sex")
+```
+
+
+```{r echo=F}
+detach(penguins1)
+```
+
+```{r echo=F}
+s <- summary(Interaction_model1)
+pander(s, caption = "The measurements of all the predictors of the final model")
+```
+
+## 8. Reference & Source:
+
+Jenouvrier, S., Caswell, H., Barbraud, C., Holland, M., Stroeve, J., &   Weimerskirch, H. (2019). Demographic models and IPCC climate projections predict the decline of an emperor penguin population. Proceedings of the National Academy of Sciences, 116(49), 24526-24531.
+
+Williams, T. D., & Naveen, R. (2019). Body mass in penguins: a reflection of species-specific adaptations, ecological and physiological constraints, and niche differentiation. The Auk, 136(2), 1-23.
+
+Originally published in: Gorman KB, Williams TD, Fraser WR (2014) Ecological Sexual Dimorphism and Environmental Variability within a Community of Antarctic Penguins (Genus Pygoscelis). PLoS ONE 9(3): e90081. doi:10.1371/journal.pone.0090081
+
+Adélie penguins: Palmer Station Antarctica LTER and K. Gorman. 2020. Structural size measurements and isotopic signatures of foraging among adult male and female Adélie penguins (Pygoscelis adeliae) nesting along the Palmer Archipelago near Palmer Station, 2007-2009 ver 5. Environmental Data Initiative. doi: 10.6073/pasta/98b16d7d563f265cb52372c8ca99e60f
+
+Gentoo penguins: Palmer Station Antarctica LTER and K. Gorman. 2020. Structural size measurements and isotopic signatures of foraging among adult male and female Gentoo penguin (Pygoscelis papua) nesting along the Palmer Archipelago near Palmer Station, 2007-2009 ver 5. Environmental Data Initiative. doi: 10.6073/pasta/7fca67fb28d56ee2ffa3d9370ebda689
+
+Chinstrap penguins: Palmer Station Antarctica LTER and K. Gorman. 2020. Structural size measurements and isotopic signatures of foraging among adult male and female Chinstrap penguin (Pygoscelis antarcticus) nesting along the Palmer Archipelago near Palmer Station, 2007-2009 ver 6. Environmental Data Initiative. doi: 10.6073/pasta/c14dfcfada8ea13a17536e73eb6fbe9e
+
+Horst AM, Hill AP, Gorman KB (2020). palmerpenguins: Palmer Archipelago (Antarctica) penguin data. R package version 0.1.0. https://allisonhorst.github.io/palmerpenguins/. doi: 10.5281/zenodo.3960218.
+
+Lescroël, A., Schmidt, A., Elrod, M. et al. Foraging dive frequency predicts body mass gain in the Adélie penguin. Sci Rep 11, 22883 (2021). https://doi.org/10.1038/s41598-021-02451-4
+
+How do Penguins Keep Warm? Science of the Cold. https://www.coolantarctica.com/Antarctica%20fact%20file/science/cold_penguins.php
+
+René Groscolas, The use of body mass loss to estimate metabolic rate in fasting sea birds: A critical examination based on emperor penguins (Aptenodytes forsteri), Comparative Biochemistry and Physiology Part A: Physiology, Volume 90, Issue 3, 1988, Pages 361-366, ISSN 0300-9629, https://doi.org/10.1016/0300-9629(88)90203-4. (https://www.sciencedirect.com/science/article/pii/0300962988902034)
+
